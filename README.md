@@ -2,7 +2,27 @@
 
 Deterministic context-budget and loop guard for DeepSeek Harness (DSH), maintained by **xoykor**. Unofficial and not affiliated with or endorsed by DeepSeek.
 
-Context Guard is designed for long-running local-model agent sessions. It monitors context pressure and execution behavior at the harness level rather than relying only on instructions to the model.
+Context Guard is designed for long-running local-model agent sessions. It monitors context pressure and execution behavior **at the harness level**, so loop prevention and budget enforcement do not depend solely on whether the model follows a prompt.
+
+## Why a harness-level guard?
+
+Small and local models can keep issuing equivalent tool calls, retry the same failure or consume context until useful state is lost. Prompt instructions help, but they are probabilistic. Context Guard adds deterministic checks around execution so the harness can stop or compact work according to explicit policy.
+
+```text
+model request
+    |
+    v
+DSH execution loop
+    |
+    +--> context pressure
+    +--> repeated action
+    +--> no progress
+    +--> repeated failure
+    +--> step/tool/time ceilings
+    |
+    v
+continue / checkpoint / compact / stop
+```
 
 ## Features
 
@@ -43,6 +63,13 @@ Unlimited execution can consume substantial time and model/provider resources. L
 
 Context thresholds should be configured for the model's actual usable context window. The plugin supports preset-specific policies so different models can use different thresholds and reserve budgets.
 
+## Operational guidance
+
+- Start with conservative ceilings and relax them only after observing real workloads.
+- Use preset-specific thresholds when models have materially different context windows.
+- Disabling a supported ceiling with `null` does not disable loop/failure detection.
+- A guard should stop pathological execution, not replace task-level evaluation or model-quality benchmarks.
+
 ## Compatibility
 
 The base plugin injects DSH's `tools`, `tokenMeter` and `compaction` services.
@@ -70,3 +97,8 @@ Extracted from xoykor's DSH configuration/backup and published as a standalone p
 The repository includes the original optional checkpoint/compaction runtime patch under `patches/checkpoint-compaction/`. It provides the custom checkpoint capability used by advanced Context Guard configurations from the original local setup.
 
 This patch targets the locally patched DSH build it was extracted from and is **not claimed to be drop-in compatible with current upstream master**. Review the patch, its manifest and tests before applying it to another DSH version. Base Context Guard operation should be preferred when only upstream APIs are available.
+
+
+## License
+
+GNU General Public License v3.0. See [LICENSE](LICENSE).
